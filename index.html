@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1117">
+<title>Vistoria de Andaimes</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0d1117;
+  --s1:      #161b22;
+  --s2:      #21262d;
+  --border:  #30363d;
+  --accent:  #f0b429;
+  --orange:  #e05c00;
+  --green:   #3fb950;
+  --red:     #f85149;
+  --blue:    #58a6ff;
+  --text:    #e6edf3;
+  --text2:   #8b949e;
+  --text3:   #6e7681;
+  --r: 12px; --rs: 8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:100px}
+
+/* HEADER */
+.header{
+  background:var(--s1);border-bottom:1px solid var(--border);
+  padding:14px 18px;position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;gap:12px;
+}
+.h-icon{
+  width:38px;height:38px;border-radius:10px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),var(--orange));
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+}
+.h-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700}
+.h-sub{font-size:11px;color:var(--text2);font-family:'IBM Plex Sans',monospace}
+.h-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.online-dot{
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;color:var(--text2);font-family:'IBM Plex Sans',monospace;
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 2s infinite}
+.dot.on{background:var(--green)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.pending-lbl{font-size:10px;color:var(--accent);font-family:'IBM Plex Sans',monospace}
+
+/* TABS */
+.tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--border)}
+.tab{
+  flex:1;padding:13px 6px;background:none;border:none;cursor:pointer;
+  color:var(--text2);font-size:12px;font-weight:600;font-family:'IBM Plex Sans',sans-serif;
+  border-bottom:2px solid transparent;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab .tbadge{
+  background:var(--red);color:#fff;font-size:10px;
+  padding:1px 5px;border-radius:10px;
+}
+
+/* PANELS */
+.panel{display:none;padding:16px}
+.panel.active{display:block}
+
+/* SECTION */
+.sec{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px;margin-bottom:14px;
+}
+.sec-title{
+  font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);
+  margin-bottom:14px;display:flex;align-items:center;gap:8px;
+}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* FIELDS */
+.field{margin-bottom:13px}
+.field:last-child{margin-bottom:0}
+label{
+  display:block;font-size:11px;font-weight:600;
+  color:var(--text2);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px;
+}
+label .req{color:var(--accent)}
+input[type=text],input[type=date],input[type=time],input[type=number],select,textarea{
+  width:100%;background:var(--bg);border:1.5px solid var(--border);
+  color:var(--text);border-radius:var(--rs);padding:13px 15px;
+  font-size:16px;font-family:'IBM Plex Sans',sans-serif;outline:none;
+  -webkit-appearance:none;transition:border-color .2s,box-shadow .2s;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--accent);box-shadow:0 0 0 3px rgba(240,180,41,.12);
+}
+select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 13px center;padding-right:40px;
+}
+textarea{resize:vertical;min-height:80px}
+
+/* RADIO GRID */
+.rg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rg.three{grid-template-columns:1fr 1fr 1fr}
+.ro{position:relative}
+.ro input{position:absolute;opacity:0;width:0;height:0}
+.ro label{
+  display:flex;align-items:center;justify-content:center;
+  padding:11px 6px;background:var(--bg);border:1.5px solid var(--border);
+  border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:500;
+  color:var(--text2);transition:all .15s;text-transform:none;letter-spacing:0;
+  min-height:46px;text-align:center;
+}
+.ro input:checked+label{border-color:var(--accent);background:rgba(240,180,41,.1);color:var(--accent);font-weight:700}
+
+/* CHECKLIST */
+.ck-item{
+  background:var(--bg);border:1.5px solid var(--border);
+  border-radius:var(--r);padding:13px;margin-bottom:9px;
+  transition:border-color .2s;
+}
+.ck-item.nao{border-color:var(--red);background:rgba(248,81,73,.04)}
+.ck-item.sim{border-color:rgba(63,185,80,.35)}
+.ck-q{font-size:13px;line-height:1.5;font-weight:500;margin-bottom:10px}
+.ck-btns{display:flex;gap:7px}
+.ck-btn{
+  flex:1;padding:9px 4px;border-radius:var(--rs);
+  border:1.5px solid var(--border);background:var(--s2);
+  color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;
+  font-family:'IBM Plex Sans',sans-serif;transition:all .15s;text-align:center;
+}
+.ck-btn.s-sim{background:rgba(63,185,80,.15);border-color:var(--green);color:var(--green)}
+.ck-btn.s-nao{background:rgba(248,81,73,.15);border-color:var(--red);color:var(--red)}
+.ck-btn.s-na{background:rgba(88,166,255,.15);border-color:var(--blue);color:var(--blue)}
+.ck-nc{margin-top:9px}
+.ck-nc input{font-size:14px;padding:9px 12px}
+
+/* SUBMIT */
+.btn-submit{
+  width:100%;background:linear-gradient(135deg,var(--accent),var(--orange));
+  color:#0d1117;border:none;border-radius:var(--r);padding:17px;
+  font-size:16px;font-weight:800;font-family:'Syne',sans-serif;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:opacity .2s,transform .1s;
+}
+.btn-submit:active{transform:scale(.98)}
+.btn-submit:disabled{opacity:.4;cursor:not-allowed}
+
+/* RECORDS */
+.rec-card{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:var(--r);padding:15px;margin-bottom:11px;position:relative;
+}
+.rec-sync{
+  position:absolute;top:12px;right:12px;
+  font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;
+  font-family:'IBM Plex Sans',monospace;
+}
+.synced{background:rgba(63,185,80,.12);color:var(--green);border:1px solid rgba(63,185,80,.25)}
+.pending{background:rgba(240,180,41,.12);color:var(--accent);border:1px solid rgba(240,180,41,.25)}
+.failed{background:rgba(248,81,73,.12);color:var(--red);border:1px solid rgba(248,81,73,.25)}
+.rec-placa{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--accent)}
+.rec-proj{font-size:13px;color:var(--text2);margin:3px 0 8px}
+.rec-meta{font-size:11px;color:var(--text3);font-family:'IBM Plex Sans',monospace}
+
+/* ACTIONS */
+.act-bar{display:flex;gap:9px;margin-bottom:14px}
+.act-btn{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:11px;border-radius:var(--rs);font-size:12px;font-weight:700;
+  cursor:pointer;border:none;font-family:'IBM Plex Sans',sans-serif;transition:all .2s;
+}
+.act-btn:active{transform:scale(.97)}
+.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-csv{background:rgba(63,185,80,.12);color:var(--green);border:1px solid rgba(63,185,80,.25)}
+.btn-sync{background:rgba(240,180,41,.12);color:var(--accent);border:1px solid rgba(240,180,41,.25)}
+.btn-clear{background:rgba(248,81,73,.12);color:var(--red);border:1px solid rgba(248,81,73,.25)}
+
+/* CONFIG */
+.cfg-box{
+  background:rgba(240,180,41,.07);border:1px solid rgba(240,180,41,.2);
+  border-radius:var(--r);padding:14px;margin-bottom:14px;
+  font-size:13px;color:var(--text2);line-height:1.7;
+}
+.cfg-box strong{color:var(--accent)}
+.cfg-box code{
+  background:var(--bg);padding:2px 6px;border-radius:4px;
+  font-family:'IBM Plex Sans',monospace;font-size:11px;color:var(--text);
+}
+
+/* GUIDE */
+.guide-step{display:flex;gap:13px;margin-bottom:15px}
+.g-num{
+  width:30px;height:30px;flex-shrink:0;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--orange));
+  color:#0d1117;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:13px;font-family:'Syne',sans-serif;
+}
+.g-body strong{display:block;font-size:14px;margin-bottom:3px}
+.g-body p{font-size:12px;color:var(--text2);line-height:1.6}
+.g-body code{
+  display:block;margin-top:7px;background:var(--bg);
+  padding:10px 12px;border-radius:var(--rs);
+  font-family:'IBM Plex Sans',monospace;font-size:11px;color:var(--accent);
+  border:1px solid var(--border);white-space:pre-wrap;word-break:break-all;line-height:1.6;
+}
+
+/* PROGRESS */
+.prog-wrap{margin-bottom:18px}
+.prog-lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);font-family:'IBM Plex Sans',monospace;margin-bottom:5px}
+.prog-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--orange));border-radius:2px;transition:width .4s ease;width:0%}
+
+/* FOTO */
+.foto-area{border:2px dashed var(--border);border-radius:var(--r);padding:18px;text-align:center}
+.foto-btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  background:var(--s2);border:1.5px solid var(--border);color:var(--text);
+  padding:13px 20px;border-radius:var(--rs);font-size:14px;font-weight:600;
+  cursor:pointer;width:100%;font-family:'IBM Plex Sans',sans-serif;transition:all .2s;
+}
+.foto-btn:active{transform:scale(.98)}
+.foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.foto-thumb{aspect-ratio:1;border-radius:var(--rs);overflow:hidden;border:1px solid var(--border);position:relative}
+.foto-thumb img{width:100%;height:100%;object-fit:cover}
+.foto-del{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.75);border:none;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.foto-hint{font-size:11px;color:var(--text3);margin-top:8px}
+
+/* TOAST */
+#toast{
+  position:fixed;bottom:20px;left:50%;
+  transform:translateX(-50%) translateY(60px);
+  background:var(--s2);border:1px solid var(--border);color:var(--text);
+  padding:12px 20px;border-radius:40px;font-size:13px;font-weight:500;
+  z-index:9999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.6);pointer-events:none;
+}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.success{border-color:var(--green)}
+#toast.error{border-color:var(--red)}
+#toast.warn{border-color:var(--accent)}
+
+.empty{text-align:center;padding:48px 20px;color:var(--text2)}
+.empty .ei{font-size:44px;margin-bottom:12px}
+.empty p{font-size:13px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="h-icon">🏗️</div>
+  <div>
+    <div class="h-title">Vistoria de Andaimes</div>
+    <div class="h-sub">offline-first · Google Sheets sync</div>
+  </div>
+  <div class="h-right">
+    <div class="online-dot">
+      <div class="dot" id="dot"></div>
+      <span id="dot-txt">offline</span>
+    </div>
+    <div class="pending-lbl" id="pending-lbl"></div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" id="tab-form" onclick="showTab('form',this)">📋 Formulário</button>
+  <button class="tab" id="tab-rec" onclick="showTab('rec',this)">
+    📁 Registros <span class="tbadge" id="tbadge" style="display:none">0</span>
+  </button>
+  <button class="tab" id="tab-script" onclick="showTab('script',this)">🔧 Script</button>
+
+</div>
+
+<!-- ══ FORMULÁRIO ══════════════════════════════════════ -->
+<div class="panel active" id="panel-form">
+
+  <div class="prog-wrap">
+    <div class="prog-lbl"><span>Progresso</span><span id="prog-pct">0%</span></div>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+  </div>
+
+  <!-- IDENTIFICAÇÃO -->
+  <div class="sec">
+    <div class="sec-title">🔖 Identificação</div>
+    <div class="field">
+      <label>Placa do Andaime <span class="req">*</span></label>
+      <input type="text" id="f_placa" placeholder="Ex: AND-0042" style="text-transform:uppercase">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
+      <div class="field">
+        <label>Data <span class="req">*</span></label>
+        <input type="date" id="f_data">
+      </div>
+      <div class="field">
+        <label>Horário</label>
+        <input type="time" id="f_hora">
+      </div>
+    </div>
+    <div class="field">
+      <label>Técnico Responsável <span class="req">*</span></label>
+      <input type="text" id="f_tecnico" placeholder="Nome completo">
+    </div>
+    <div class="field">
+      <label>Projeto / Área</label>
+      <input type="text" id="f_projeto" placeholder="Ex: P-001 · Área Nordeste">
+    </div>
+    <div class="field">
+      <label>Executante</label>
+      <input type="text" id="f_executante" placeholder="Equipe responsável">
+    </div>
+  </div>
+
+  <!-- DADOS DO ANDAIME -->
+  <div class="sec">
+    <div class="sec-title">📐 Dados do Andaime</div>
+    <div class="field">
+      <label>Tipo</label>
+      <select id="f_tipo">
+        <option value="">Selecione…</option>
+        <option>Andaime Fachadeiro</option>
+        <option>Andaime Suspenso</option>
+        <option>Andaime Tubular</option>
+        <option>Torre de Acesso</option>
+        <option>Andaime Rolante</option>
+        <option>Outro</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px">
+      <div class="field">
+        <label>Altura (m)</label>
+        <input type="number" id="f_altura" placeholder="0.0" step="0.1" min="0">
+      </div>
+      <div class="field">
+        <label>Largura (m)</label>
+        <input type="number" id="f_largura" placeholder="0.0" step="0.1" min="0">
+      </div>
+      <div class="field">
+        <label>Comprim. (m)</label>
+        <input type="number" id="f_comprimento" placeholder="0.0" step="0.1" min="0">
+      </div>
+    </div>
+    <div class="field">
+      <label>Resultado Geral <span class="req">*</span></label>
+      <div class="rg three">
+        <div class="ro"><input type="radio" name="resultado" id="r_ap" value="Aprovado"><label for="r_ap">✅ Aprovado</label></div>
+        <div class="ro"><input type="radio" name="resultado" id="r_pa" value="Parcial"><label for="r_pa">⚠️ Parcial</label></div>
+        <div class="ro"><input type="radio" name="resultado" id="r_re" value="Reprovado"><label for="r_re">❌ Reprovado</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHECKLIST -->
+  <div class="sec">
+    <div class="sec-title">✅ Checklist de Segurança</div>
+    <div id="checklist-container"></div>
+  </div>
+
+  <!-- OBSERVAÇÕES -->
+  <div class="sec">
+    <div class="sec-title">📝 Observações & Pendências</div>
+    <div class="field">
+      <label>Descrição das pendências / irregularidades</label>
+      <textarea id="f_obs" placeholder="Descreva qualquer pendência, irregularidade ou observação relevante…"></textarea>
+    </div>
+    <div class="field">
+      <label>Prazo para regularização</label>
+      <input type="date" id="f_prazo">
+    </div>
+  </div>
+
+  <!-- FOTOS -->
+  <div class="sec">
+    <div class="sec-title">📸 Registro Fotográfico</div>
+    <div class="foto-area">
+      <button class="foto-btn" onclick="document.getElementById('cam').click()">
+        📷 Tirar Foto / Selecionar
+      </button>
+      <input type="file" id="cam" accept="image/*" capture="environment" multiple style="display:none">
+      <div class="foto-grid" id="foto-preview"></div>
+      <div class="foto-hint" id="foto-hint">Até 5 fotos (salvas localmente)</div>
+    </div>
+  </div>
+
+  <button class="btn-submit" id="btn-save" onclick="salvar()">
+    💾 Salvar Vistoria
+  </button>
+</div>
+
+<!-- ══ REGISTROS ══════════════════════════════════════ -->
+<div class="panel" id="panel-rec">
+  <div class="act-bar">
+    <button class="act-btn btn-csv" onclick="exportCSV()">📥 CSV</button>
+    <button class="act-btn btn-sync" onclick="syncAll()">🔄 Sincronizar</button>
+    <button class="act-btn btn-clear" onclick="limparSincronizados()">🗑️ Limpar</button>
+  </div>
+  <div id="rec-list">
+    <div class="empty"><div class="ei">📂</div><p>Nenhum registro ainda.<br>Preencha e salve o formulário.</p></div>
+  </div>
+</div>
+
+
+
+<!-- ══ INFO APPS SCRIPT ════════════════════════════════ -->
+<div class="panel" id="panel-script">
+  <div class="sec">
+    <div class="sec-title">📋 Código do Apps Script</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6">
+      Cole este código no seu Apps Script (<strong>Extensões → Apps Script</strong> na planilha) e reimplante como Web App.
+    </p>
+    <pre id="script-code" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);padding:14px;font-family:'IBM Plex Sans',monospace;font-size:11px;color:var(--accent);white-space:pre-wrap;word-break:break-all;line-height:1.7;overflow-x:auto">const SHEET_NAME = 'Vistorias';
+
+function doPost(e) {
+  try {
+    const raw  = e.postData.contents;
+    const data = JSON.parse(raw);
+    gravar(data);
+    return ok();
+  } catch(err) {
+    return erro(err.message);
+  }
+}
+
+function doGet(e) {
+  try {
+    if (e.parameter && e.parameter.payload) {
+      const data = JSON.parse(e.parameter.payload);
+      gravar(data);
+      return ok();
+    }
+    return ok('online');
+  } catch(err) {
+    return erro(err.message);
+  }
+}
+
+function gravar(data) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet()
+                  .getSheetByName(SHEET_NAME);
+  if (!sheet) throw new Error('Aba "' + SHEET_NAME + '" não encontrada');
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow([
+      'ID','Placa','Data','Horário','Técnico',
+      'Projeto/Área','Executante','Tipo','Altura',
+      'Largura','Comprimento','Resultado',
+      'EPI','Sinalização','Guarda-corpo',
+      'Plataforma','Fixação','Estrutura',
+      'Acesso','Capacidade','Aterramento',
+      'Insp. Anterior','Observações',
+      'Prazo','Fotos','Criado Em'
+    ]);
+  }
+
+  sheet.appendRow([
+    data.id,          data.placa,          data.data,
+    data.hora,        data.tecnico,        data.projeto,
+    data.executante,  data.tipo,           data.altura,
+    data.largura,     data.comprimento,    data.resultado,
+    data.ck_epi,            data.ck_sinalizacao,
+    data.ck_guardacorpo,    data.ck_plataforma,
+    data.ck_fixacao,        data.ck_estrutura,
+    data.ck_acesso,         data.ck_capacidade,
+    data.ck_aterramento,    data.ck_sinalizacao_obra,
+    data.observacoes,       data.prazo,
+    data.fotos_count,       data.criado_em
+  ]);
+}
+
+function ok(msg) {
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: true, msg: msg || 'salvo' }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function erro(msg) {
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: false, erro: msg }))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+    <button class="btn-submit" style="margin-top:14px" onclick="copiarScript()">📋 Copiar código</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════
+// CHECKLIST
+// ════════════════════════════════════════════════════
+const CHECKLIST = [
+  { key: 'ck_epi',           label: 'Trabalhadores estão com EPI adequado (capacete, cinto, luvas)?' },
+  { key: 'ck_sinalizacao',   label: 'Sinalização de segurança ao redor do andaime está presente?' },
+  { key: 'ck_guardacorpo',   label: 'Guarda-corpo e rodapé contra queda de materiais instalados?' },
+  { key: 'ck_plataforma',    label: 'Plataforma de trabalho está devidamente fixada e sem folgas?' },
+  { key: 'ck_fixacao',       label: 'Travessas e diagonais instaladas corretamente?' },
+  { key: 'ck_estrutura',     label: 'Estrutura metálica livre de corrosão, dobras ou danos visíveis?' },
+  { key: 'ck_acesso',        label: 'Acesso ao andaime (escadas/rampas) em boas condições?' },
+  { key: 'ck_capacidade',    label: 'Capacidade de carga está sendo respeitada?' },
+  { key: 'ck_aterramento',   label: 'Andaime devidamente aterrado (risco elétrico verificado)?' },
+  { key: 'ck_sinalizacao_obra', label: 'Inspeção anterior registrada e atualizada na placa do andaime?' },
+];
+
+let respostas = {};
+let fotos = [];
+
+function buildChecklist() {
+  const c = document.getElementById('checklist-container');
+  c.innerHTML = CHECKLIST.map((item, i) => `
+    <div class="ck-item" id="ck-${i}">
+      <div class="ck-q">${i+1}. ${item.label}</div>
+      <div class="ck-btns">
+        <button class="ck-btn" id="ck${i}-sim" onclick="resp(${i},'Sim')">✅ Sim</button>
+        <button class="ck-btn" id="ck${i}-nao" onclick="resp(${i},'Não')">❌ Não</button>
+        <button class="ck-btn" id="ck${i}-na"  onclick="resp(${i},'N/A')">⚙️ N/A</button>
+      </div>
+      <div class="ck-nc" id="ck-nc-${i}" style="display:none">
+        <input type="text" placeholder="Descreva a não conformidade…" id="ck-nc-txt-${i}">
+      </div>
+    </div>
+  `).join('');
+}
+
+function resp(i, val) {
+  respostas[i] = val;
+  const item = document.getElementById(`ck-${i}`);
+  item.className = 'ck-item' + (val==='Não'?' nao':val==='Sim'?' sim':'');
+  ['sim','nao','na'].forEach(r => {
+    const b = document.getElementById(`ck${i}-${r}`);
+    b.className = 'ck-btn' +
+      (r==='sim'&&val==='Sim'?' s-sim':
+       r==='nao'&&val==='Não'?' s-nao':
+       r==='na' &&val==='N/A'?' s-na':'');
+  });
+  document.getElementById(`ck-nc-${i}`).style.display = val==='Não' ? 'block' : 'none';
+  updateProgress();
+}
+
+// ════════════════════════════════════════════════════
+// PROGRESS
+// ════════════════════════════════════════════════════
+const REQ = ['f_placa','f_data','f_tecnico'];
+function updateProgress() {
+  let filled = 0;
+  REQ.forEach(id => { if (document.getElementById(id)?.value.trim()) filled++; });
+  if (document.querySelector('input[name="resultado"]:checked')) filled++;
+  filled += Object.keys(respostas).length;
+  const total = REQ.length + 1 + CHECKLIST.length;
+  const pct = Math.round((filled / total) * 100);
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-pct').textContent = pct + '%';
+}
+document.addEventListener('input', updateProgress);
+document.addEventListener('change', updateProgress);
+
+// ════════════════════════════════════════════════════
+// FOTOS
+// ════════════════════════════════════════════════════
+function addFotos(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  const slots = 5 - fotos.length;
+  if (slots <= 0) { toast('⚠️ Máximo de 5 fotos atingido', 'warn'); return; }
+  const toRead = files.slice(0, slots);
+  toRead.forEach(f => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      fotos.push(ev.target.result);
+      renderFotos();
+    };
+    reader.onerror = () => toast('❌ Erro ao ler foto', 'error');
+    reader.readAsDataURL(f);
+  });
+  // limpa input para permitir mesma foto novamente
+  e.target.value = '';
+}
+
+function renderFotos() {
+  const preview = document.getElementById('foto-preview');
+  const hint    = document.getElementById('foto-hint');
+  if (!preview) return;
+  preview.innerHTML = fotos.map((src, i) => `
+    <div class="foto-thumb">
+      <img src="${src}" alt="foto ${i+1}">
+      <button class="foto-del" onclick="removeFoto(${i})">✕</button>
+    </div>`).join('');
+  hint.textContent = fotos.length > 0 ? `${fotos.length}/5 foto(s) adicionada(s)` : 'Até 5 fotos (salvas localmente)';
+}
+
+function removeFoto(i) {
+  fotos.splice(i, 1);
+  renderFotos();
+}
+
+// ════════════════════════════════════════════════════
+// INDEXEDDB
+// ════════════════════════════════════════════════════
+let db;
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('VistoriasAndaimes', 1);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('vistorias')) {
+        const s = d.createObjectStore('vistorias', { keyPath: 'id' });
+        s.createIndex('sync_status', 'sync_status');
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; res(); };
+    req.onerror = () => rej(req.error);
+  });
+}
+const tx = (mode = 'readonly') => db.transaction('vistorias', mode).objectStore('vistorias');
+const dbPut = r => new Promise((res,rej) => { const q=tx('readwrite').put(r); q.onsuccess=()=>res(); q.onerror=()=>rej(q.error); });
+const dbAll = () => new Promise((res,rej) => { const q=tx().getAll(); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
+const dbByStatus = s => new Promise((res,rej) => {
+  const q = tx().index('sync_status').getAll(IDBKeyRange.only(s));
+  q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error);
+});
+
+// ════════════════════════════════════════════════════
+// SALVAR
+// ════════════════════════════════════════════════════
+async function salvar() {
+  const placa   = document.getElementById('f_placa').value.trim().toUpperCase();
+  const data    = document.getElementById('f_data').value;
+  const tecnico = document.getElementById('f_tecnico').value.trim();
+  const result  = document.querySelector('input[name="resultado"]:checked')?.value;
+
+  if (!placa || !data || !tecnico) { toast('⚠️ Preencha os campos obrigatórios (*)','warn'); return; }
+  if (!result) { toast('⚠️ Selecione o Resultado Geral','warn'); return; }
+  if (Object.keys(respostas).length < CHECKLIST.length) {
+    toast(`⚠️ Responda todas as ${CHECKLIST.length} perguntas (${Object.keys(respostas).length}/${CHECKLIST.length})`, 'warn');
+    return;
+  }
+
+  if (!db) { toast('❌ Banco local não iniciado. Recarregue a página.', 'error'); return; }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.textContent = '💾 Salvando…';
+
+  const record = {
+    id: crypto.randomUUID(),
+    placa, data, hora: document.getElementById('f_hora').value || '',
+    tecnico,
+    projeto:     document.getElementById('f_projeto').value.trim(),
+    executante:  document.getElementById('f_executante').value.trim(),
+    tipo:        document.getElementById('f_tipo').value,
+    altura:      document.getElementById('f_altura').value || '',
+    largura:     document.getElementById('f_largura').value || '',
+    comprimento: document.getElementById('f_comprimento').value || '',
+    resultado:   result,
+    observacoes: document.getElementById('f_obs').value.trim(),
+    prazo:       document.getElementById('f_prazo').value || '',
+    fotos_count: fotos.length,
+    // fotos NÃO vão para o IndexedDB (evita quota exceeded)
+    // ficam apenas em memória até o sync
+    _fotos_mem:  fotos.slice(),
+    criado_em:   new Date().toISOString(),
+    sync_status: 'pending',
+  };
+
+  // Adiciona respostas do checklist
+  CHECKLIST.forEach((item, i) => { record[item.key] = respostas[i] || '—'; });
+
+  try {
+    // Salva sem as fotos base64 para não estourar quota
+    const recordSemFotos = { ...record };
+    delete recordSemFotos._fotos_mem;
+    await dbPut(recordSemFotos);
+
+    toast('✅ Vistoria salva!', 'success');
+    resetForm();
+    updateBadge();
+    updatePendingLabel();
+    // Tenta sync imediato passando as fotos em memória
+    if (navigator.onLine) syncAll(true, [record]);
+  } catch(e) {
+    console.error('Erro ao salvar:', e);
+    toast('❌ Erro ao salvar: ' + (e.message || e), 'error');
+  }
+
+  btn.disabled = false; btn.innerHTML = '💾 Salvar Vistoria';
+}
+
+function resetForm() {
+  ['f_placa','f_data','f_hora','f_tecnico','f_projeto','f_executante',
+   'f_altura','f_largura','f_comprimento','f_obs','f_prazo'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('f_tipo').value = '';
+  document.querySelectorAll('input[name="resultado"]').forEach(r => r.checked = false);
+  respostas = {}; fotos = [];
+  document.getElementById('foto-preview').innerHTML = '';
+  document.getElementById('foto-hint').textContent = 'Até 5 fotos (salvas localmente)';
+  document.getElementById('f_data').valueAsDate = new Date();
+  buildChecklist();
+  updateProgress();
+}
+
+// ════════════════════════════════════════════════════
+// SYNC → GOOGLE SHEETS
+// ════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvBIg5FsXOxN7ahAfHmyYC1We-_Fu1Y7ULSwVUu31qy1vEPazH-54KzWTJeiQR4gQw/exec';
+function getURL() { return APPS_SCRIPT_URL; }
+
+async function syncAll(silent = false, memRecords = []) {
+  const url = getURL();
+
+  const pending = await dbByStatus('pending');
+  const failed  = await dbByStatus('failed');
+  const memIds  = memRecords.map(r => r.id);
+  const dbRecs  = [...pending, ...failed].filter(r => !memIds.includes(r.id));
+  const toSync  = [...memRecords, ...dbRecs];
+
+  if (!toSync.length) { if (!silent) toast('✅ Tudo sincronizado!', 'success'); return; }
+  toast(`🔄 Enviando ${toSync.length} registro(s)…`);
+
+  let ok = 0, fail = 0;
+
+  for (const rec of toSync) {
+    const payload = { ...rec };
+    delete payload._fotos_mem;
+    delete payload.fotos;
+
+    let enviou = false;
+    try {
+      // no-cors: browser envia mas não lê resposta — é esperado, não é erro
+      await fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify(payload),
+      });
+      enviou = true; // se chegou aqui sem throw, o fetch foi aceito pela rede
+    } catch(e) {
+      // só cai aqui se não houve conexão de rede mesmo
+      console.error('Erro de rede:', e);
+    }
+
+    const updated = { ...rec };
+    delete updated._fotos_mem;
+    updated.sync_status = enviou ? 'synced' : 'failed';
+    if (enviou) updated.synced_at = new Date().toISOString();
+    await dbPut(updated);
+    if (enviou) ok++; else fail++;
+  }
+
+  if (ok > 0) toast(`☁️ ${ok} registro(s) enviado(s)!`, 'success');
+  else toast(`❌ Sem conexão — ${fail} pendente(s)`, 'error');
+
+  updateBadge();
+  updatePendingLabel();
+  if (document.getElementById('panel-rec').classList.contains('active')) renderRecords();
+}
+
+async function testarConexao() {
+  const url = getURL();
+  if (!url) { toast('⚙️ Cole a URL do Apps Script antes', 'warn'); return; }
+  toast('🔌 Testando…');
+  try {
+    // GET no Apps Script retorna { ok: true, status: 'online' }
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.ok) toast('✅ Conexão OK! Apps Script respondeu.', 'success');
+    else toast('⚠️ Apps Script respondeu mas com erro', 'warn');
+  } catch(e) {
+    toast('❌ Sem resposta — verifique a URL ou a internet', 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════
+// REGISTROS
+// ════════════════════════════════════════════════════
+async function renderRecords() {
+  const all = await dbAll();
+  all.sort((a,b) => new Date(b.criado_em) - new Date(a.criado_em));
+  const list = document.getElementById('rec-list');
+
+  if (!all.length) {
+    list.innerHTML = `<div class="empty"><div class="ei">📂</div><p>Nenhum registro ainda.</p></div>`;
+    return;
+  }
+
+  const badgeMap = {
+    synced:  ['synced', '☁️ Sync'],
+    pending: ['pending','⏳ Pendente'],
+    failed:  ['failed', '❌ Falhou'],
+  };
+
+  list.innerHTML = all.map(r => {
+    const [cls, lbl] = badgeMap[r.sync_status] || ['pending','⏳'];
+    return `
+      <div class="rec-card">
+        <span class="rec-sync ${cls}">${lbl}</span>
+        <div class="rec-placa">${r.placa}</div>
+        <div class="rec-proj">${r.projeto || '—'} · ${r.executante || '—'}</div>
+        <div class="rec-meta">
+          📅 ${r.data} ${r.hora ? '· 🕐 '+r.hora : ''} · 👷 ${r.tecnico}
+          · ${r.resultado} · 📸 ${r.fotos_count} foto(s)
+          ${r.observacoes ? `<br>📝 ${r.observacoes.substring(0,80)}…` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function updateBadge() {
+  const all = await dbAll();
+  const n = all.length;
+  const badge = document.getElementById('tbadge');
+  badge.textContent = n;
+  badge.style.display = n > 0 ? 'inline-block' : 'none';
+}
+
+async function updatePendingLabel() {
+  const pending = await dbByStatus('pending');
+  const failed  = await dbByStatus('failed');
+  const total = pending.length + failed.length;
+  const el = document.getElementById('pending-lbl');
+  el.textContent = total > 0 ? `${total} pendente(s)` : '';
+}
+
+async function limparSincronizados() {
+  const all = await dbAll();
+  const synced = all.filter(r => r.sync_status === 'synced');
+  if (!synced.length) { toast('ℹ️ Nenhum registro sincronizado para limpar', 'warn'); return; }
+  if (!confirm(`Remover ${synced.length} registro(s) já sincronizados do dispositivo?`)) return;
+  for (const r of synced) {
+    await new Promise((res,rej) => {
+      const q = db.transaction('vistorias','readwrite').objectStore('vistorias').delete(r.id);
+      q.onsuccess = res; q.onerror = rej;
+    });
+  }
+  toast(`🗑️ ${synced.length} registro(s) removidos`, 'success');
+  updateBadge(); updatePendingLabel(); renderRecords();
+}
+
+// ════════════════════════════════════════════════════
+// EXPORT CSV
+// ════════════════════════════════════════════════════
+async function exportCSV() {
+  const all = await dbAll();
+  if (!all.length) { toast('⚠️ Nenhum registro para exportar', 'warn'); return; }
+
+  const ckKeys = CHECKLIST.map(c => c.key);
+  const cols = ['id','placa','data','hora','tecnico','projeto','executante',
+                'tipo','altura','largura','comprimento','resultado',
+                ...ckKeys,'observacoes','prazo','fotos_count','criado_em','sync_status'];
+
+  const esc = v => {
+    if (v == null) return '';
+    const s = String(v);
+    return (s.includes(';') || s.includes('"') || s.includes('\n'))
+      ? '"' + s.replace(/"/g,'""') + '"' : s;
+  };
+
+  const rows = [cols.join(';'), ...all.map(r => cols.map(c => esc(r[c])).join(';'))];
+  const csv  = '\uFEFF' + rows.join('\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `vistorias_andaimes_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`📥 CSV exportado (${all.length} registros)`, 'success');
+}
+
+
+
+// ════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════
+function showTab(name, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'rec') renderRecords();
+}
+
+// ════════════════════════════════════════════════════
+// ONLINE / OFFLINE
+// ════════════════════════════════════════════════════
+function updateNetStatus() {
+  const on = navigator.onLine;
+  document.getElementById('dot').className = 'dot' + (on?' on':'');
+  document.getElementById('dot-txt').textContent = on ? 'online' : 'offline';
+  if (on) syncAll(true);
+}
+window.addEventListener('online', updateNetStatus);
+window.addEventListener('offline', updateNetStatus);
+
+// ════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════
+let _tt;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(_tt);
+  _tt = setTimeout(() => el.className = '', 3200);
+}
+
+// ════════════════════════════════════════════════════
+// COPIAR SCRIPT
+// ════════════════════════════════════════════════════
+function copiarScript() {
+  const code = document.getElementById('script-code').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    toast('📋 Código copiado!', 'success');
+  }).catch(() => {
+    // fallback para browsers sem clipboard API
+    const ta = document.createElement('textarea');
+    ta.value = code;
+    document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    ta.remove();
+    toast('📋 Código copiado!', 'success');
+  });
+}
+
+// ════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════
+async function init() {
+  await openDB();
+  buildChecklist();
+  // Vincula input de câmera via JS (evita conflito com listener global de change)
+  document.getElementById('cam').addEventListener('change', addFotos);
+  updateNetStatus();
+  updateBadge();
+  updatePendingLabel();
+  document.getElementById('f_data').valueAsDate = new Date();
+  updateProgress();
+}
+
+init();
+</script>
+</body>
+</html>
