@@ -414,38 +414,25 @@ textarea{resize:vertical;min-height:80px}
     </p>
     <pre id="script-code" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);padding:14px;font-family:'IBM Plex Sans',monospace;font-size:11px;color:var(--accent);white-space:pre-wrap;word-break:break-all;line-height:1.7;overflow-x:auto">const SHEET_NAME = 'Vistorias';
 
-function doPost(e) {
+function doGet(e) {
   try {
-    // Loga tudo para debug
-    Logger.log('postData: ' + JSON.stringify(e.postData));
-    Logger.log('parameter: ' + JSON.stringify(e.parameter));
+    Logger.log('doGet chamado');
+    Logger.log('parametros: ' + JSON.stringify(e.parameter));
 
-    let raw = '';
-    if (e.postData && e.postData.contents) {
-      raw = e.postData.contents;
-    } else if (e.parameter && e.parameter.payload) {
-      raw = e.parameter.payload;
-    }
-
-    Logger.log('raw: ' + raw);
-
-    if (!raw) {
-      Logger.log('ERRO: corpo vazio');
-      return ContentService.createTextOutput(JSON.stringify({ ok: false, erro: 'corpo vazio' }))
+    // Teste de conexão sem dados
+    if (!e.parameter || !e.parameter.dados) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, status: 'online' }))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    const raw  = e.parameter.dados;
     const data = JSON.parse(raw);
-    Logger.log('placa: ' + data.placa);
+    Logger.log('placa recebida: ' + data.placa);
 
     const sheet = SpreadsheetApp.getActiveSpreadsheet()
                     .getSheetByName(SHEET_NAME);
 
-    if (!sheet) {
-      Logger.log('ERRO: aba não encontrada');
-      return ContentService.createTextOutput(JSON.stringify({ ok: false, erro: 'aba nao encontrada' }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
+    if (!sheet) throw new Error('Aba "' + SHEET_NAME + '" não encontrada');
 
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
@@ -474,26 +461,26 @@ function doPost(e) {
       data.fotos_count,       data.criado_em
     ]);
 
-    Logger.log('SUCESSO: linha gravada para placa ' + data.placa);
-
+    Logger.log('SUCESSO: gravado ' + data.placa);
     return ContentService.createTextOutput(JSON.stringify({ ok: true }))
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch(err) {
-    Logger.log('EXCECAO: ' + err.message);
+    Logger.log('ERRO: ' + err.message);
     return ContentService.createTextOutput(JSON.stringify({ ok: false, erro: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({ ok: true, status: 'online' }))
-    .setMimeType(ContentService.MimeType.JSON);
+function doPost(e) {
+  // Redireciona POST para doGet por compatibilidade
+  return doGet(e);
 }
 
 function testeManual() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
   sheet.appendRow(['TESTE-MANUAL', new Date(), 'ok']);
+  Logger.log('testeManual executado');
 }</pre>
     <button class="btn-submit" style="margin-top:14px" onclick="copiarScript()">📋 Copiar código</button>
   </div>
@@ -742,15 +729,10 @@ async function syncAll(silent = false, memRecords = []) {
 
     let enviou = false;
     try {
-      // no-cors: browser envia mas não lê resposta — é esperado, não é erro
-      await fetch(url, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: JSON.stringify(payload),
-      });
-      enviou = true; // se chegou aqui sem throw, o fetch foi aceito pela rede
+      const urlComDados = url + '?dados=' + encodeURIComponent(JSON.stringify(payload));
+      await fetch(urlComDados, { method: 'GET', mode: 'no-cors' });
+      enviou = true;
     } catch(e) {
-      // só cai aqui se não houve conexão de rede mesmo
       console.error('Erro de rede:', e);
     }
 
