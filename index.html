@@ -416,71 +416,84 @@ textarea{resize:vertical;min-height:80px}
 
 function doPost(e) {
   try {
-    const raw  = e.postData.contents;
+    // Loga tudo para debug
+    Logger.log('postData: ' + JSON.stringify(e.postData));
+    Logger.log('parameter: ' + JSON.stringify(e.parameter));
+
+    let raw = '';
+    if (e.postData && e.postData.contents) {
+      raw = e.postData.contents;
+    } else if (e.parameter && e.parameter.payload) {
+      raw = e.parameter.payload;
+    }
+
+    Logger.log('raw: ' + raw);
+
+    if (!raw) {
+      Logger.log('ERRO: corpo vazio');
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, erro: 'corpo vazio' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     const data = JSON.parse(raw);
-    gravar(data);
-    return ok();
+    Logger.log('placa: ' + data.placa);
+
+    const sheet = SpreadsheetApp.getActiveSpreadsheet()
+                    .getSheetByName(SHEET_NAME);
+
+    if (!sheet) {
+      Logger.log('ERRO: aba não encontrada');
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, erro: 'aba nao encontrada' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
+        'ID','Placa','Data','Horário','Técnico',
+        'Projeto/Área','Executante','Tipo','Altura',
+        'Largura','Comprimento','Resultado',
+        'EPI','Sinalização','Guarda-corpo',
+        'Plataforma','Fixação','Estrutura',
+        'Acesso','Capacidade','Aterramento',
+        'Insp. Anterior','Observações',
+        'Prazo','Fotos','Criado Em'
+      ]);
+    }
+
+    sheet.appendRow([
+      data.id,          data.placa,          data.data,
+      data.hora,        data.tecnico,        data.projeto,
+      data.executante,  data.tipo,           data.altura,
+      data.largura,     data.comprimento,    data.resultado,
+      data.ck_epi,            data.ck_sinalizacao,
+      data.ck_guardacorpo,    data.ck_plataforma,
+      data.ck_fixacao,        data.ck_estrutura,
+      data.ck_acesso,         data.ck_capacidade,
+      data.ck_aterramento,    data.ck_sinalizacao_obra,
+      data.observacoes,       data.prazo,
+      data.fotos_count,       data.criado_em
+    ]);
+
+    Logger.log('SUCESSO: linha gravada para placa ' + data.placa);
+
+    return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+      .setMimeType(ContentService.MimeType.JSON);
+
   } catch(err) {
-    return erro(err.message);
+    Logger.log('EXCECAO: ' + err.message);
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, erro: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 function doGet(e) {
-  try {
-    if (e.parameter && e.parameter.payload) {
-      const data = JSON.parse(e.parameter.payload);
-      gravar(data);
-      return ok();
-    }
-    return ok('online');
-  } catch(err) {
-    return erro(err.message);
-  }
-}
-
-function gravar(data) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet()
-                  .getSheetByName(SHEET_NAME);
-  if (!sheet) throw new Error('Aba "' + SHEET_NAME + '" não encontrada');
-
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow([
-      'ID','Placa','Data','Horário','Técnico',
-      'Projeto/Área','Executante','Tipo','Altura',
-      'Largura','Comprimento','Resultado',
-      'EPI','Sinalização','Guarda-corpo',
-      'Plataforma','Fixação','Estrutura',
-      'Acesso','Capacidade','Aterramento',
-      'Insp. Anterior','Observações',
-      'Prazo','Fotos','Criado Em'
-    ]);
-  }
-
-  sheet.appendRow([
-    data.id,          data.placa,          data.data,
-    data.hora,        data.tecnico,        data.projeto,
-    data.executante,  data.tipo,           data.altura,
-    data.largura,     data.comprimento,    data.resultado,
-    data.ck_epi,            data.ck_sinalizacao,
-    data.ck_guardacorpo,    data.ck_plataforma,
-    data.ck_fixacao,        data.ck_estrutura,
-    data.ck_acesso,         data.ck_capacidade,
-    data.ck_aterramento,    data.ck_sinalizacao_obra,
-    data.observacoes,       data.prazo,
-    data.fotos_count,       data.criado_em
-  ]);
-}
-
-function ok(msg) {
-  return ContentService
-    .createTextOutput(JSON.stringify({ ok: true, msg: msg || 'salvo' }))
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, status: 'online' }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function erro(msg) {
-  return ContentService
-    .createTextOutput(JSON.stringify({ ok: false, erro: msg }))
-    .setMimeType(ContentService.MimeType.JSON);
+function testeManual() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  sheet.appendRow(['TESTE-MANUAL', new Date(), 'ok']);
 }</pre>
     <button class="btn-submit" style="margin-top:14px" onclick="copiarScript()">📋 Copiar código</button>
   </div>
