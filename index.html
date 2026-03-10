@@ -730,8 +730,11 @@ async function syncAll(silent = false, memRecords = []) {
     let enviou = false;
     try {
       const urlComDados = url + '?dados=' + encodeURIComponent(JSON.stringify(payload));
-      await fetch(urlComDados, { method: 'GET', mode: 'no-cors' });
-      enviou = true;
+      const res = await fetch(urlComDados);
+      const txt = await res.text();
+      const json = JSON.parse(txt.match(/\{.*\}/s)?.[0] || '{}');
+      enviou = json.ok === true;
+      if (!enviou) console.error('Apps Script erro:', json.erro);
     } catch(e) {
       console.error('Erro de rede:', e);
     }
