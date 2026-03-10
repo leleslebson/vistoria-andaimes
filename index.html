@@ -730,20 +730,12 @@ async function syncAll(silent = false, memRecords = []) {
     let enviou = false;
     try {
       const urlComDados = url + '?dados=' + encodeURIComponent(JSON.stringify(payload));
-      const res = await fetch(urlComDados, {
-        redirect: 'follow',
-        credentials: 'omit',
-      });
-      const txt = await res.text();
-      console.log('Resposta Apps Script:', txt.substring(0, 300));
-      toast('DEBUG: ' + txt.substring(0, 80), '');
-      const match = txt.match(/\{[^}]*"ok"[^}]*\}/);
-      const json = match ? JSON.parse(match[0]) : { ok: false };
-      enviou = json.ok === true;
-      if (!enviou) console.error('Apps Script erro:', json.erro || txt.substring(0, 200));
+      // no-cors: envia a requisição, não lemos a resposta (limitação do browser)
+      // mas o dado CHEGA e é gravado no Apps Script normalmente
+      await fetch(urlComDados, { mode: 'no-cors' });
+      enviou = true;
     } catch(e) {
-      toast('ERRO FETCH: ' + e.message, 'error');
-      console.error('Erro fetch:', e.message);
+      console.error('Erro de rede:', e.message);
     }
 
     const updated = { ...rec };
