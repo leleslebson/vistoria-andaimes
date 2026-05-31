@@ -1,1073 +1,297 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cronograma Gantt</title>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-<style>
-/* ============================================
-   RESET & BASE
-   ============================================ */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f8; color: #333; overflow: hidden; }
-
-/* ============================================
-   TOP BAR
-   ============================================ */
-.top-bar {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 20px; background: #1a237e; color: #fff;
-  flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.2); z-index: 100;
-}
-.top-bar h1 { font-size: 18px; font-weight: 600; margin-right: auto; }
-.top-bar button, .top-bar label.btn {
-  background: #3949ab; border: none; color: #fff; padding: 8px 16px;
-  border-radius: 4px; cursor: pointer; font-size: 13px; transition: background 0.2s;
-  display: inline-flex; align-items: center; gap: 6px;
-}
-.top-bar button:hover, .top-bar label.btn:hover { background: #5c6bc0; }
-.top-bar input[type="file"] { display: none; }
-
-/* ============================================
-   FILTER BAR
-   ============================================ */
-.filter-bar {
-  display: flex; align-items: center; gap: 12px;
-  padding: 8px 20px; background: #fff; border-bottom: 1px solid #ddd;
-  flex-shrink: 0; z-index: 90;
-}
-.filter-bar label { font-size: 12px; color: #555; font-weight: 600; }
-.filter-bar select, .filter-bar input[type="text"] {
-  padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; outline: none;
-}
-.filter-bar select:focus, .filter-bar input[type="text"]:focus { border-color: #3949ab; }
-.filter-bar input[type="text"] { width: 220px; }
-
-/* ============================================
-   ZOOM BAR
-   ============================================ */
-.zoom-bar {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 20px; background: #eceff1; border-bottom: 1px solid #ddd;
-  flex-shrink: 0; z-index: 80;
-}
-.zoom-bar span { font-size: 12px; color: #555; font-weight: 600; margin-right: 4px; }
-.zoom-bar button {
-  background: #fff; border: 1px solid #ccc; color: #333; padding: 5px 12px;
-  border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s;
-}
-.zoom-bar button:hover { background: #e3f2fd; border-color: #3949ab; }
-.zoom-bar button.active { background: #3949ab; color: #fff; border-color: #3949ab; }
-
-/* ============================================
-   MAIN AREA
-   ============================================ */
-.main-area {
-  flex: 1; display: flex; overflow: hidden; position: relative;
-}
-
-/* ============================================
-   LEFT PANEL (TASK LIST)
-   ============================================ */
-.left-panel {
-  width: 320px; flex-shrink: 0; background: #fff; border-right: 1px solid #ddd;
-  display: flex; flex-direction: column; overflow: hidden; z-index: 70;
-}
-.left-header {
-  display: flex; background: #eceff1; border-bottom: 1px solid #ddd; font-weight: 600; font-size: 12px;
-}
-.left-header .col-proj { width: 140px; padding: 10px 12px; border-right: 1px solid #ddd; }
-.left-header .col-etapa { flex: 1; padding: 10px 12px; }
-.left-body { flex: 1; overflow-y: auto; overflow-x: hidden; }
-
-.task-row {
-  display: flex; border-bottom: 1px solid #eee; font-size: 12px; cursor: pointer;
-  transition: background 0.15s; min-height: 36px; align-items: center;
-}
-.task-row:hover { background: #f5f5f5; }
-.task-row.selected { background: #e3f2fd; }
-.task-row .col-proj {
-  width: 140px; padding: 8px 12px; border-right: 1px solid #eee; font-weight: 600; color: #1a237e;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.task-row .col-etapa {
-  flex: 1; padding: 8px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.task-row.group-header { background: #f0f4ff; font-weight: 700; }
-.task-row.group-header .col-etapa { color: #555; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-.task-row.hidden { display: none; }
-
-/* ============================================
-   RIGHT PANEL (GANTT CHART)
-   ============================================ */
-.right-panel {
-  flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;
-  background: #fff;
-}
-.timeline-header {
-  display: flex; background: #eceff1; border-bottom: 1px solid #ddd;
-  font-weight: 600; font-size: 11px; color: #555; overflow: hidden;
-  flex-shrink: 0; height: 40px;
-}
-.timeline-body {
-  flex: 1; overflow: auto; position: relative;
-}
-.timeline-canvas {
-  position: relative; min-height: 100%;
-}
-
-/* Time slots */
-.time-slot {
-  flex-shrink: 0; border-right: 1px solid #e0e0e0; display: flex;
-  align-items: center; justify-content: center; white-space: nowrap;
-  padding: 0 4px; height: 40px;
-}
-.time-slot.weekend { background: #fafafa; color: #aaa; }
-.time-slot.today { background: #fff3e0; color: #e65100; font-weight: 700; }
-
-/* Grid lines */
-.grid-line {
-  position: absolute; top: 0; bottom: 0; width: 1px; background: #eee; pointer-events: none;
-}
-.grid-line.weekend { background: #f5f5f5; }
-.grid-line.today { background: #ff9800; width: 2px; z-index: 50; }
-
-/* Gantt bars */
-.gantt-bar {
-  position: absolute; height: 24px; border-radius: 4px; cursor: pointer;
-  display: flex; align-items: center; padding: 0 8px; font-size: 11px;
-  color: #fff; font-weight: 500; white-space: nowrap; overflow: hidden;
-  text-overflow: ellipsis; transition: transform 0.15s, box-shadow 0.15s; z-index: 10;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.2);
-}
-.gantt-bar:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.25); z-index: 20; }
-.gantt-bar.selected { outline: 2px solid #ff9800; outline-offset: 2px; z-index: 30; }
-
-/* Row backgrounds */
-.row-bg {
-  position: absolute; left: 0; right: 0; height: 36px; border-bottom: 1px solid #f0f0f0;
-  pointer-events: none;
-}
-.row-bg.odd { background: #fafafa; }
-.row-bg.group { background: #f0f4ff; }
-
-/* ============================================
-   TOOLTIP
-   ============================================ */
-.tooltip {
-  position: fixed; background: #263238; color: #fff; padding: 10px 14px;
-  border-radius: 6px; font-size: 12px; line-height: 1.6; z-index: 1000;
-  pointer-events: none; opacity: 0; transition: opacity 0.15s; max-width: 320px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-.tooltip.visible { opacity: 1; }
-.tooltip strong { color: #ffcc80; }
-.tooltip .tt-row { display: flex; gap: 8px; }
-.tooltip .tt-label { color: #b0bec5; min-width: 90px; flex-shrink: 0; }
-.tooltip .tt-value { color: #fff; }
-
-/* ============================================
-   MODAL (DETAILS)
-   ============================================ */
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000;
-  display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none;
-  transition: opacity 0.2s;
-}
-.modal-overlay.visible { opacity: 1; pointer-events: auto; }
-.modal-box {
-  background: #fff; border-radius: 8px; width: 520px; max-width: 90vw;
-  max-height: 80vh; display: flex; flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3); overflow: hidden;
-}
-.modal-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; background: #1a237e; color: #fff;
-}
-.modal-header h2 { font-size: 16px; font-weight: 600; }
-.modal-header .close-btn {
-  background: none; border: none; color: #fff; font-size: 22px; cursor: pointer;
-  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  border-radius: 4px; transition: background 0.2s;
-}
-.modal-header .close-btn:hover { background: rgba(255,255,255,0.15); }
-.modal-body {
-  padding: 20px; overflow-y: auto; font-size: 13px; line-height: 1.7;
-}
-.modal-body .detail-row {
-  display: flex; padding: 8px 0; border-bottom: 1px solid #eee;
-}
-.modal-body .detail-row:last-child { border-bottom: none; }
-.modal-body .detail-label {
-  width: 140px; flex-shrink: 0; color: #666; font-weight: 600;
-}
-.modal-body .detail-value { flex: 1; color: #333; word-break: break-word; }
-
-/* ============================================
-   MESSAGE / ALERT
-   ============================================ */
-.msg-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 3000;
-  display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none;
-  transition: opacity 0.2s;
-}
-.msg-overlay.visible { opacity: 1; pointer-events: auto; }
-.msg-box {
-  background: #fff; border-radius: 8px; padding: 24px 28px; max-width: 480px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3); text-align: center;
-}
-.msg-box h3 { font-size: 18px; margin-bottom: 12px; color: #1a237e; }
-.msg-box p { font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 20px; }
-.msg-box button {
-  background: #3949ab; color: #fff; border: none; padding: 10px 24px;
-  border-radius: 4px; cursor: pointer; font-size: 14px; transition: background 0.2s;
-}
-.msg-box button:hover { background: #5c6bc0; }
-.msg-box.error h3 { color: #c62828; }
-.msg-box.error button { background: #c62828; }
-.msg-box.error button:hover { background: #e53935; }
-
-/* ============================================
-   EMPTY STATE
-   ============================================ */
-.empty-state {
-  position: absolute; inset: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; color: #90a4ae; gap: 16px;
-}
-.empty-state svg { width: 80px; height: 80px; opacity: 0.5; }
-.empty-state p { font-size: 16px; }
-
-/* ============================================
-   SCROLLBAR
-   ============================================ */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #bdbdbd; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #9e9e9e; }
-
-/* ============================================
-   APP WRAPPER
-   ============================================ */
-#app { display: flex; flex-direction: column; height: 100vh; }
-</style>
+    <meta charset="UTF-8" />
+    <title>Gerador de Cronograma Gantt</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docsearch/jsdoc@3.13.0/build/jsdoc.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1em;
+            text-align: center;
+        }
+        .upload-section {
+            margin: 2em auto;
+            max-width: 800px;
+            padding: 1em;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .buttons {
+            display: flex;
+            gap: 1em;
+            margin-bottom: 2em;
+        }
+        .time-scales {
+            display: flex;
+            gap: 1em;
+        }
+        #chart-container {
+            width: 100%;
+            height: 80vh;
+            background: #fff;
+            border-radius: 8px;
+            padding: 1em;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .footer {
+            text-align: center;
+            margin-top: 2em;
+            font-size: 0.9em;
+            color: #888;
+        }
+        .dark-theme {
+            background-color: #1e3a5f;
+            color: white;
+        }
+        .theme-toggle {
+            margin-left: auto;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
 
-<div id="app">
-  <!-- TOP BAR -->
-  <div class="top-bar">
-    <h1>📊 Cronograma Gantt</h1>
-    <label class="btn" for="fileInput">📁 Selecionar Excel</label>
-    <input type="file" id="fileInput" accept=".xlsx,.xls" />
-    <button id="btnExport">💾 Exportar HTML</button>
-    <button id="btnFit">🔲 Ajustar Tela</button>
-  </div>
-
-  <!-- FILTER BAR -->
-  <div class="filter-bar">
-    <label for="filterProj">Projeto:</label>
-    <select id="filterProj"><option value="__all__">Todos os projetos</option></select>
-    <label for="searchEtapa" style="margin-left:12px">Buscar etapa:</label>
-    <input type="text" id="searchEtapa" placeholder="Digite o nome da etapa..." />
-  </div>
-
-  <!-- ZOOM BAR -->
-  <div class="zoom-bar">
-    <span>Zoom:</span>
-    <button data-zoom="day" class="active">Diário</button>
-    <button data-zoom="week">Semanal</button>
-    <button data-zoom="month">Mensal</button>
-    <button data-zoom="year">Anual</button>
-  </div>
-
-  <!-- MAIN AREA -->
-  <div class="main-area">
-    <!-- LEFT: Task list -->
-    <div class="left-panel">
-      <div class="left-header">
-        <div class="col-proj">Projeto</div>
-        <div class="col-etapa">Etapa</div>
-      </div>
-      <div class="left-body" id="leftBody"></div>
-    </div>
-
-    <!-- RIGHT: Gantt chart -->
-    <div class="right-panel" id="rightPanel">
-      <div class="timeline-header" id="timelineHeader"></div>
-      <div class="timeline-body" id="timelineBody">
-        <div class="timeline-canvas" id="timelineCanvas"></div>
-      </div>
-      <div class="empty-state" id="emptyState">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-          <path d="M3 9h18M9 3v18"/>
-        </svg>
-        <p>Selecione um arquivo Excel para visualizar o cronograma</p>
-      </div>
-    </div>
-  </div>
+<div class="header">
+    <h1>Gerador de Cronograma Gantt</h1>
+    <p><i>Importe um arquivo Excel e visualize seu planejamento</i></p>
 </div>
 
-<!-- TOOLTIP -->
-<div class="tooltip" id="tooltip"></div>
-
-<!-- MODAL DETAILS -->
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal-box">
-    <div class="modal-header">
-      <h2>🔍 Detalhes da Etapa</h2>
-      <button class="close-btn" id="modalClose">&times;</button>
-    </div>
-    <div class="modal-body" id="modalBody"></div>
-  </div>
+<div class="upload-section">
+    <input type="file" id="fileInput" accept=".xlsx, .xls" />
+    <div id="statusMessage"></div>
+    <button class="btn btn-primary" onclick="loadFile()">Selecionar Arquivo Excel</button>
 </div>
 
-<!-- MESSAGE -->
-<div class="msg-overlay" id="msgOverlay">
-  <div class="msg-box" id="msgBox">
-    <h3 id="msgTitle"></h3>
-    <p id="msgText"></p>
-    <button id="msgBtn">OK</button>
-  </div>
+<div class="buttons">
+    <button class="btn btn-outline-secondary" onclick="setTimeScale('daily')">Diário</button>
+    <button class="btn btn-outline-secondary" onclick="setTimeScale('weekly')">Semanal</button>
+    <button class="btn btn-outline-secondary" onclick="setTimeScale('monthly')">Mensal</button>
+    <button class="btn btn-outline-secondary" onclick="setTimeScale('annual')">Anual</button>
+    <button class="btn btn-outline-secondary" onclick="toggleTheme()">Trocar Tema</button>
 </div>
 
+<div id="chart-container"></div>
+
+<script src="https://unpkg.com/xlsx@0.18.4/dist/xlsx.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/frappe-gantt@latest/dist/frappe-gantt.min.js"></script>
 <script>
-// ============================================
-// GLOBAL STATE
-// ============================================
-let rawData = [];           // all rows from Excel
-let tasks = [];             // normalized tasks
-let projects = [];          // unique project names
-let zoom = 'day';           // day | week | month | year
-let selectedTaskId = null;  // currently selected task
-let filterProject = '__all__';
-let searchQuery = '';
+    const chartContainer = document.getElementById('chart-container');
+    const fileInput = document.getElementById('fileInput');
+    const statusMessage = document.getElementById('statusMessage');
 
-// ============================================
-// COLUMN NORMALIZATION
-// ============================================
-function normalizeCol(name) {
-  return name
-    .toString()
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u030f]/g, '') // remove accents
-    .replace(/\s+/g, '')                               // remove spaces
-    .trim();
-}
-
-const REQUIRED_COLS = {
-  projeto:   ['projeto', 'project', 'proj', 'nomeprojeto'],
-  etapa:     ['etapa', 'atividade', 'task', 'fase', 'step', 'nomeetapa'],
-  datainicio: ['datainicio', 'dtinicio', 'dtinicial', 'inicio', 'start', 'startdate', 'datainicial', 'dtinicio'],
-  datafim:    ['datafim', 'dtfim', 'dtfinal', 'fim', 'end', 'enddate', 'datafinal', 'dtfim', 'termino', 'deadline']
-};
-
-function findColumn(headers, candidates) {
-  const normHeaders = headers.map((h, i) => ({ orig: h, norm: normalizeCol(h), idx: i }));
-  for (const cand of candidates) {
-    const found = normHeaders.find(h => h.norm === cand || h.norm.includes(cand));
-    if (found) return { name: found.orig, index: found.idx };
-  }
-  return null;
-}
-
-// ============================================
-// DATE PARSING (robust)
-// ============================================
-function parseDate(val) {
-  if (!val) return null;
-  if (val instanceof Date) return isNaN(val) ? null : val;
-  const str = String(val).trim();
-  // dd/mm/yyyy or dd-mm-yyyy
-  let m = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
-  if (m) {
-    let d = parseInt(m[1], 10), mo = parseInt(m[2], 10) - 1, y = parseInt(m[3], 10);
-    if (y < 100) y += y < 50 ? 2000 : 1900;
-    const dt = new Date(y, mo, d);
-    return dt.getDate() === d && dt.getMonth() === mo ? dt : null;
-  }
-  // yyyy/mm/dd or yyyy-mm-dd
-  m = str.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
-  if (m) {
-    let y = parseInt(m[1], 10), mo = parseInt(m[2], 10) - 1, d = parseInt(m[3], 10);
-    const dt = new Date(y, mo, d);
-    return dt.getDate() === d && dt.getMonth() === mo ? dt : null;
-  }
-  // Excel serial number
-  if (/^\d+(\.\d+)?$/.test(str)) {
-    const n = parseFloat(str);
-    if (n > 30000 && n < 50000) {
-      // Excel epoch: 1899-12-30
-      const epoch = new Date(1899, 11, 30);
-      const dt = new Date(epoch.getTime() + n * 86400000);
-      return isNaN(dt) ? null : dt;
+    function loadFile() {
+        fileInput.click();
     }
-  }
-  const dt = new Date(str);
-  return isNaN(dt) ? null : dt;
-}
 
-function formatDate(dt) {
-  if (!dt) return '';
-  const d = String(dt.getDate()).padStart(2, '0');
-  const m = String(dt.getMonth() + 1).padStart(2, '0');
-  const y = dt.getFullYear();
-  return `${d}/${m}/${y}`;
-}
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const data = event.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                
+                // Validate file
+                if (workbook.Sheets && Object.keys(workbook.Sheets).length === 0) {
+                    statusMessage.innerText = "Arquivo inválido. Por favor, selecione um arquivo com planilhas.";
+                    return;
+                }
+                
+                const sheets = workbook.Sheets;
+                let currentSheet = sheets[Object.keys(sheets)[0]];
+                let columns = [];
+                
+                // Determine columns
+                if (currentSheet && currentSheet['$t'] === 'worksheet') {
+                    const titleRow = currentSheet['!ref'];
+                    const rows = XLSX.utils.sheet_to_json(currentSheet, { header: "row" });
+                    
+                    if (!rows || !rows.length) {
+                        statusMessage.innerText = "Arquivo vazio. Favor carregar um arquivo com dados.";
+                        return;
+                    }
+                    
+                    // Detect required columns
+                    const requiredColumns = ['Tarefa', 'Início', 'Fim', 'Progresso', 'Responsável'];
+                    let mappedColumns = {};
+                    let customColumns = [];
 
-function formatDateTime(dt) {
-  if (!dt) return '';
-  return formatDate(dt) + ' ' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
-}
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
+                        if (!row) continue;
 
-// ============================================
-// COLOR PALETTE for projects
-// ============================================
-const PROJECT_COLORS = [
-  '#1a237e', '#0d7377', '#b71c1c', '#2e7d32', '#6a1b9a',
-  '#00695c', '#c62828', '#1565c0', '#4527a0', '#ad1457',
-  '#283593', '#558b2f', '#0277bd', '#6d4c41', '#37474f'
-];
-function getProjectColor(idx) {
-  return PROJECT_COLORS[idx % PROJECT_COLORS.length];
-}
+                        // Map columns
+                        for (const col of requiredColumns) {
+                            if (row[col]) {
+                                mappedColumns[col] = row[col];
+                            } else {
+                                customColumns.push(col);
+                            }
+                        }
+                    }
 
-// ============================================
-// EXCEL LOADING
-// ============================================
-document.getElementById('fileInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const json = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
-  if (json.length < 2) { showMsg('Arquivo vazio', 'O arquivo Excel não contém dados suficientes.', true); return; }
+                    // Show custom mapping
+                    statusMessage.innerText = "Mapeamento de colunas:";
+                    const mappingDiv = document.createElement('div');
+                    mappingDiv.style.marginTop: '1em';
+                    mappingDiv.innerHTML = `
+                        <pre>${customColumns.join(', ')}</pre>
+                    `;
+                    chartContainer.appendChild(mappingDiv);
 
-  const headers = json[0].map(h => h != null ? String(h) : '');
-  const rows = json.slice(1);
+                    // Parse data
+                    let tasks = [];
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
+                        if (!row) continue;
 
-  // Find required columns
-  const colProj = findColumn(headers, REQUIRED_COLS.projeto);
-  const colEtapa = findColumn(headers, REQUIRED_COLS.etapa);
-  const colInicio = findColumn(headers, REQUIRED_COLS.datainicio);
-  const colFim = findColumn(headers, REQUIRED_COLS.datafim);
+                        const task = {};
+                        for (const [col, value] of Object.entries(mappedColumns)) {
+                            task[col] = value;
+                        }
+                        
+                        // Add custom columns
+                        for (const col of customColumns) {
+                            if (row[col]) task[col] = row[col];
+                        }
 
-  const missing = [];
-  if (!colProj) missing.push('Projeto');
-  if (!colEtapa) missing.push('Etapa');
-  if (!colInicio) missing.push('Data Início');
-  if (!colFim) missing.push('Data Fim');
+                        tasks.push(task);
+                    }
 
-  if (missing.length > 0) {
-    showMsg(
-      'Colunas obrigatórias não encontradas',
-      `As seguintes colunas estão ausentes no arquivo:<br><strong>${missing.join(', ')}</strong><br><br>
-      Verifique se o arquivo possui as colunas: <strong>Projeto, Etapa, Data Início, Data Fim</strong>.`,
-      true
-    );
-    return;
-  }
-
-  // Build raw data
-  rawData = rows.map((r, i) => {
-    const obj = {};
-    headers.forEach((h, idx) => { obj[h] = r[idx]; });
-    obj._rowIndex = i;
-    return obj;
-  }).filter(r => r[colProj.name] != null && String(r[colProj.name]).trim() !== '');
-
-  // Normalize tasks
-  tasks = [];
-  const projMap = new Map();
-  rawData.forEach((r, i) => {
-    const proj = String(r[colProj.name]).trim();
-    const etapa = String(r[colEtapa.name] || '').trim();
-    const dtInicio = parseDate(r[colInicio.name]);
-    const dtFim = parseDate(r[colFim.name]);
-    if (!proj || !etapa || !dtInicio || !dtFim) return;
-    // Ensure start <= end
-    let start = dtInicio, end = dtFim;
-    if (start > end) { [start, end] = [end, start]; }
-    if (!projMap.has(proj)) projMap.set(proj, projMap.size);
-    const extras = {};
-    headers.forEach(h => {
-      if (h === colProj.name || h === colEtapa.name || h === colInicio.name || h === colFim.name) return;
-      if (r[h] != null && String(r[h]).trim() !== '') extras[h] = r[h];
+                    // Generate chart
+                    generateGanttChart(tasks, 'daily');
+                } else {
+                    statusMessage.innerText = "Arquivo inválido. Favor carregar um arquivo Excel.";
+                }
+            } catch (err) {
+                console.error('Erro ao processar o arquivo:', err);
+                statusMessage.innerText = "Erro ao ler o arquivo. Por favor, tente novamente.";
+            }
+        };
+        reader.readAsBinaryString(file);
     });
-    tasks.push({
-      id: `t${i}`,
-      project: proj,
-      name: etapa,
-      start: start,
-      end: end,
-      color: getProjectColor(projMap.get(proj)),
-      extras: extras
-    });
-  });
 
-  if (tasks.length === 0) {
-    showMsg('Nenhuma etapa válida', 'Não foi possível extrair etapas válidas do arquivo. Verifique as datas.', true);
-    return;
-  }
-
-  // Sort tasks by project then by start date
-  tasks.sort((a, b) => {
-    if (a.project !== b.project) return a.project.localeCompare(b.project);
-    return a.start - b.start;
-  });
-
-  projects = [...new Set(tasks.map(t => t.project))];
-
-  // Populate project filter
-  const sel = document.getElementById('filterProj');
-  sel.innerHTML = '<option value="__all__">Todos os projetos</option>';
-  projects.forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p; opt.textContent = p;
-    sel.appendChild(opt);
-  });
-
-  // Reset filters
-  filterProject = '__all__';
-  searchQuery = '';
-  document.getElementById('searchEtapa').value = '';
-  selectedTaskId = null;
-
-  render();
-  showMsg('Sucesso!', `Carregado <strong>${tasks.length}</strong> etapa(s) de <strong>${projects.length}</strong> projeto(s).`, false);
-});
-
-// ============================================
-// FILTERS & ZOOM
-// ============================================
-document.getElementById('filterProj').addEventListener('change', (e) => {
-  filterProject = e.target.value;
-  selectedTaskId = null;
-  render();
-});
-
-document.getElementById('searchEtapa').addEventListener('input', (e) => {
-  searchQuery = e.target.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u030f]/g, '');
-  selectedTaskId = null;
-  render();
-});
-
-document.querySelectorAll('.zoom-bar button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.zoom-bar button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    zoom = btn.dataset.zoom;
-    render();
-  });
-});
-
-document.getElementById('btnFit').addEventListener('click', () => {
-  // Auto zoom to fit all tasks
-  if (tasks.length === 0) return;
-  const minDate = new Date(Math.min(...tasks.map(t => t.start)));
-  const maxDate = new Date(Math.max(...tasks.map(t => t.end)));
-  const days = (maxDate - minDate) / 86400000;
-  if (days <= 30) zoom = 'day';
-  else if (days <= 90) zoom = 'week';
-  else if (days <= 730) zoom = 'month';
-  else zoom = 'year';
-  document.querySelectorAll('.zoom-bar button').forEach(b => b.classList.toggle('active', b.dataset.zoom === zoom));
-  render();
-});
-
-// ============================================
-// RENDER
-// ============================================
-function getFilteredTasks() {
-  let list = tasks;
-  if (filterProject !== '__all__') list = list.filter(t => t.project === filterProject);
-  if (searchQuery) {
-    list = list.filter(t => {
-      const n = t.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u030f]/g, '');
-      return n.includes(searchQuery);
-    });
-  }
-  return list;
-}
-
-function render() {
-  const list = getFilteredTasks();
-  const leftBody = document.getElementById('leftBody');
-  const timelineHeader = document.getElementById('timelineHeader');
-  const timelineCanvas = document.getElementById('timelineCanvas');
-  const emptyState = document.getElementById('emptyState');
-
-  if (list.length === 0) {
-    leftBody.innerHTML = '';
-    timelineHeader.innerHTML = '';
-    timelineCanvas.innerHTML = '';
-    emptyState.style.display = 'flex';
-    return;
-  }
-  emptyState.style.display = 'none';
-
-  // Determine date range
-  let minDate = new Date(Math.min(...list.map(t => t.start)));
-  let maxDate = new Date(Math.max(...list.map(t => t.end)));
-  // Add padding
-  const padDays = zoom === 'day' ? 7 : zoom === 'week' ? 14 : zoom === 'month' ? 30 : 60;
-  minDate = addDays(minDate, -padDays);
-  maxDate = addDays(maxDate, padDays);
-  minDate = startOfDay(minDate);
-  maxDate = endOfDay(maxDate);
-
-  // Build time slots
-  const slots = buildTimeSlots(minDate, maxDate, zoom);
-  const slotWidth = getSlotWidth(zoom);
-  const totalWidth = slots.length * slotWidth;
-  const rowHeight = 36;
-
-  // Group by project
-  const groups = [];
-  const groupMap = new Map();
-  list.forEach(t => {
-    if (!groupMap.has(t.project)) {
-      groupMap.set(t.project, { project: t.project, tasks: [] });
-      groups.push(groupMap.get(t.project));
+    function setTimeScale(scale) {
+        const chart = frappeGantt.getChart();
+        if (!chart) return;
+        
+        // Set scale
+        chart.setOptions({
+            timeScale: scale === 'daily' ? 1 : 
+                      scale === 'weekly' ? 7 : 
+                      scale === 'monthly' ? 30 : 
+                      scale === 'annual' ? 365 : 1,
+            showTimeAxis: true,
+            showProgress: true
+        });
     }
-    groupMap.get(t.project).tasks.push(t);
-  });
 
-  // Render left panel
-  let leftHTML = '';
-  let rowIndex = 0;
-  groups.forEach(g => {
-    leftHTML += `<div class="task-row group-header" style="height:${rowHeight}px" data-row="${rowIndex}">
-      <div class="col-proj" title="${esc(g.project)}">${esc(g.project)}</div>
-      <div class="col-etapa">${g.tasks.length} etapa(s)</div>
-    </div>`;
-    rowIndex++;
-    g.tasks.forEach(t => {
-      const sel = t.id === selectedTaskId ? 'selected' : '';
-      leftHTML += `<div class="task-row ${sel}" style="height:${rowHeight}px" data-id="${t.id}" data-row="${rowIndex}">
-        <div class="col-proj" title="${esc(t.project)}">${esc(t.project)}</div>
-        <div class="col-etapa" title="${esc(t.name)}">${esc(t.name)}</div>
-      </div>`;
-      rowIndex++;
-    });
-  });
-  leftBody.innerHTML = leftHTML;
-
-  // Render timeline header
-  let headerHTML = '';
-  slots.forEach(s => {
-    const cls = s.isWeekend ? 'weekend' : (s.isToday ? 'today' : '');
-    headerHTML += `<div class="time-slot ${cls}" style="width:${slotWidth}px">${esc(s.label)}</div>`;
-  });
-  timelineHeader.innerHTML = `<div style="display:flex;width:${totalWidth}px">${headerHTML}</div>`;
-
-  // Render timeline canvas
-  let canvasHTML = `<div style="width:${totalWidth}px;position:relative;">`;
-  const today = new Date();
-
-  // Grid lines & today line
-  slots.forEach((s, i) => {
-    const left = i * slotWidth;
-    let cls = 'grid-line';
-    if (s.isWeekend) cls += ' weekend';
-    if (s.isToday) cls += ' today';
-    canvasHTML += `<div class="${cls}" style="left:${left}px;width:${slotWidth}px"></div>`;
-  });
-
-  // Row backgrounds and bars
-  let currentRow = 0;
-  groups.forEach(g => {
-    // Group header row
-    canvasHTML += `<div class="row-bg group" style="top:${currentRow * rowHeight}px;height:${rowHeight}px"></div>`;
-    currentRow++;
-    g.tasks.forEach(t => {
-      const odd = currentRow % 2 === 1 ? 'odd' : '';
-      canvasHTML += `<div class="row-bg ${odd}" style="top:${currentRow * rowHeight}px;height:${rowHeight}px"></div>`;
-
-      const barLeft = getBarLeft(t.start, minDate, slots, slotWidth, zoom);
-      const barWidth = getBarWidth(t.start, t.end, slots, slotWidth, zoom);
-      const barTop = currentRow * rowHeight + 6; // centered vertically
-      const sel = t.id === selectedTaskId ? 'selected' : '';
-      canvasHTML += `<div class="gantt-bar ${sel}" style="left:${barLeft}px;top:${barTop}px;width:${Math.max(barWidth, 4)}px;background:${t.color}" data-id="${t.id}">${esc(t.name)}</div>`;
-      currentRow++;
-    });
-  });
-
-  canvasHTML += `</div>`;
-  timelineCanvas.innerHTML = canvasHTML;
-  timelineCanvas.style.height = `${Math.max(currentRow * rowHeight, timelineBody.clientHeight)}px`;
-
-  // Sync scroll
-  timelineBody.onscroll = () => {
-    timelineHeader.scrollLeft = timelineBody.scrollLeft;
-  };
-  leftBody.onscroll = () => {
-    // vertical sync if needed — left and right are separate containers
-  };
-
-  // Click handlers for selection
-  leftBody.querySelectorAll('.task-row[data-id]').forEach(row => {
-    row.addEventListener('click', () => selectTask(row.dataset.id));
-  });
-  timelineCanvas.querySelectorAll('.gantt-bar').forEach(bar => {
-    bar.addEventListener('click', (e) => { e.stopPropagation(); selectTask(bar.dataset.id); });
-    bar.addEventListener('mouseenter', (e) => showTooltip(e, bar.dataset.id));
-    bar.addEventListener('mouseleave', hideTooltip);
-    bar.addEventListener('dblclick', (e) => { e.stopPropagation(); openDetails(bar.dataset.id); });
-  });
-
-  // Click on row background also selects
-  timelineCanvas.querySelectorAll('.row-bg').forEach((bg, idx) => {
-    // map row index to task id
-    let ri = 0;
-    let foundId = null;
-    for (const g of groups) {
-      ri++; // skip group header
-      for (const t of g.tasks) {
-        if (ri === idx) { foundId = t.id; break; }
-        ri++;
-      }
-      if (foundId) break;
+    function toggleTheme() {
+        document.body.classList.toggle('dark-theme');
     }
-    if (foundId) {
-      bg.addEventListener('click', () => selectTask(foundId));
-      bg.addEventListener('dblclick', () => openDetails(foundId));
+
+    function generateGanttChart(tasks, scale) {
+        const chart = new frappeGantt({
+            container: chartContainer,
+            data: tasks,
+            options: {
+                height: '100%',
+                timeScale: scale === 'daily' ? 1 : 
+                         scale === 'weekly' ? 7 : 
+                         scale === 'monthly' ? 30 : 
+                         scale === 'annual' ? 365 : 1,
+                showTimeAxis: true,
+                showProgress: true,
+                showTaskDetails: true,
+                taskDraggable: true,
+                taskResizable: true,
+                taskSelectMode: 'single',
+                axisFormat: (axis, value) => {
+                    if (axis === 'time') {
+                        return new Date(value).toLocaleDateString();
+                    }
+                    return value;
+                },
+                taskStyle: {
+                    duration: 100,
+                    progress: 50,
+                    status: {
+                        notStarted: '#f39c12',
+                        inProgress: '#27ae60',
+                        completed: '#2ecc71',
+                        overdue: '#e74c3c'
+                    }
+                },
+                tooltip: {
+                    show: true,
+                    position: 'right'
+                }
+            }
+        });
+
+        // Add current date line
+        const currentDate = new Date();
+        chart.addLine({
+            type: 'line',
+            data: [{
+                x: currentDate.getTime(),
+                y: 0,
+                color: '#e74c3c'
+            }]
+        });
     }
-  });
-}
 
-// ============================================
-// TIME SLOT BUILDERS
-// ============================================
-function buildTimeSlots(minDate, maxDate, zoomType) {
-  const slots = [];
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  let d = new Date(minDate);
-
-  if (zoomType === 'day') {
-    while (d <= maxDate) {
-      const label = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
-      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      const isToday = d.getTime() === today.getTime();
-      slots.push({ date: new Date(d), label, isWeekend, isToday });
-      d = addDays(d, 1);
+    function exportHTML() {
+        const htmlContent = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <title>Cronograma Gantt</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .chart-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Gerador de Cronograma Gantt</h1>
+        <div id="chart-container"></div>
+    </div>
+    <script src="https://unpkg.com/xlsx@0.18.4/dist/xlsx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@latest/dist/frappe-gantt.min.js"></script>
+</body>
+</html>
+        `;
+        
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Cronograma_Gantt.html';
+        a.click();
     }
-  } else if (zoomType === 'week') {
-    // Start from Monday
-    while (d.getDay() !== 1) d = addDays(d, -1);
-    while (d <= maxDate) {
-      const end = addDays(d, 6);
-      const label = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} - ${String(end.getDate()).padStart(2,'0')}/${String(end.getMonth()+1).padStart(2,'0')}`;
-      const isToday = today >= d && today <= end;
-      slots.push({ start: new Date(d), end, label, isWeekend: false, isToday });
-      d = addDays(d, 7);
-    }
-  } else if (zoomType === 'month') {
-    d = new Date(d.getFullYear(), d.getMonth(), 1);
-    while (d <= maxDate) {
-      const label = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
-      const end = new Date(d.getFullYear(), d.getMonth()+1, 0);
-      const isToday = today >= d && today <= end;
-      slots.push({ start: new Date(d), end, label, isWeekend: false, isToday });
-      d = new Date(d.getFullYear(), d.getMonth()+1, 1);
-    }
-  } else if (zoomType === 'year') {
-    d = new Date(d.getFullYear(), 0, 1);
-    while (d <= maxDate) {
-      const label = String(d.getFullYear());
-      const end = new Date(d.getFullYear(), 11, 31);
-      const isToday = today >= d && today <= end;
-      slots.push({ start: new Date(d), end, label, isWeekend: false, isToday });
-      d = new Date(d.getFullYear()+1, 0, 1);
-    }
-  }
-  return slots;
-}
-
-const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
-function getSlotWidth(zoomType) {
-  if (zoomType === 'day') return 50;
-  if (zoomType === 'week') return 120;
-  if (zoomType === 'month') return 140;
-  return 200;
-}
-
-function getBarLeft(start, minDate, slots, slotWidth, zoomType) {
-  if (zoomType === 'day') {
-    const days = Math.floor((startOfDay(start) - startOfDay(minDate)) / 86400000);
-    return days * slotWidth;
-  }
-  for (let i = 0; i < slots.length; i++) {
-    if (start >= slots[i].start && start <= slots[i].end) {
-      const frac = (start - slots[i].start) / (slots[i].end - slots[i].start + 1);
-      return i * slotWidth + frac * slotWidth;
-    }
-    if (slots[i].start > start) return i * slotWidth;
-  }
-  return slots.length * slotWidth;
-}
-
-function getBarWidth(start, end, slots, slotWidth, zoomType) {
-  if (zoomType === 'day') {
-    const days = Math.max(1, Math.floor((endOfDay(end) - startOfDay(start)) / 86400000) + 1);
-    return days * slotWidth;
-  }
-  const left = getBarLeft(start, slots[0].start, slots, slotWidth, zoomType);
-  const right = getBarLeft(end, slots[0].start, slots, slotWidth, zoomType);
-  // Adjust right to cover the end slot
-  for (let i = 0; i < slots.length; i++) {
-    if (end >= slots[i].start && end <= slots[i].end) {
-      const frac = (end - slots[i].start) / (slots[i].end - slots[i].start + 1);
-      return (i * slotWidth + frac * slotWidth) - left + slotWidth * 0.1;
-    }
-  }
-  return Math.max(slotWidth * 0.5, right - left);
-}
-
-// ============================================
-// DATE UTILS
-// ============================================
-function startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
-function endOfDay(d) { const x = new Date(d); x.setHours(23,59,59,999); return x; }
-function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
-
-// ============================================
-// SELECTION
-// ============================================
-function selectTask(id) {
-  selectedTaskId = id;
-  // Update left panel
-  document.querySelectorAll('#leftBody .task-row').forEach(r => {
-    r.classList.toggle('selected', r.dataset.id === id);
-  });
-  // Update bars
-  document.querySelectorAll('.gantt-bar').forEach(b => {
-    b.classList.toggle('selected', b.dataset.id === id);
-  });
-}
-
-// ============================================
-// TOOLTIP
-// ============================================
-function showTooltip(e, id) {
-  const t = tasks.find(x => x.id === id);
-  if (!t) return;
-  const tt = document.getElementById('tooltip');
-  let html = `<div class="tt-row"><span class="tt-label">Projeto:</span><span class="tt-value">${esc(t.project)}</span></div>`;
-  html += `<div class="tt-row"><span class="tt-label">Etapa:</span><span class="tt-value">${esc(t.name)}</span></div>`;
-  html += `<div class="tt-row"><span class="tt-label">Início:</span><span class="tt-value">${formatDate(t.start)}</span></div>`;
-  html += `<div class="tt-row"><span class="tt-label">Fim:</span><span class="tt-value">${formatDate(t.end)}</span></div>`;
-  for (const [k, v] of Object.entries(t.extras)) {
-    html += `<div class="tt-row"><span class="tt-label">${esc(k)}:</span><span class="tt-value">${esc(String(v))}</span></div>`;
-  }
-  tt.innerHTML = html;
-  tt.classList.add('visible');
-  positionTooltip(e);
-}
-
-function hideTooltip() {
-  document.getElementById('tooltip').classList.remove('visible');
-}
-
-function positionTooltip(e) {
-  const tt = document.getElementById('tooltip');
-  const rect = tt.getBoundingClientRect();
-  let x = e.clientX + 16;
-  let y = e.clientY + 16;
-  if (x + rect.width > window.innerWidth) x = e.clientX - rect.width - 8;
-  if (y + rect.height > window.innerHeight) y = e.clientY - rect.height - 8;
-  tt.style.left = x + 'px';
-  tt.style.top = y + 'px';
-}
-
-document.addEventListener('mousemove', (e) => {
-  if (document.getElementById('tooltip').classList.contains('visible')) {
-    positionTooltip(e);
-  }
-});
-
-// ============================================
-// MODAL DETAILS
-// ============================================
-function openDetails(id) {
-  const t = tasks.find(x => x.id === id);
-  if (!t) return;
-  const body = document.getElementById('modalBody');
-  let html = '';
-  html += rowDetail('Projeto', t.project);
-  html += rowDetail('Etapa', t.name);
-  html += rowDetail('Data Início', formatDate(t.start));
-  html += rowDetail('Data Fim', formatDate(t.end));
-  html += rowDetail('Duração', Math.max(1, Math.floor((t.end - t.start)/86400000)+1) + ' dia(s)');
-  for (const [k, v] of Object.entries(t.extras)) {
-    html += rowDetail(k, v);
-  }
-  body.innerHTML = html;
-  document.getElementById('modalOverlay').classList.add('visible');
-}
-
-function rowDetail(label, value) {
-  return `<div class="detail-row"><div class="detail-label">${esc(label)}</div><div class="detail-value">${esc(String(value))}</div></div>`;
-}
-
-document.getElementById('modalClose').addEventListener('click', () => {
-  document.getElementById('modalOverlay').classList.remove('visible');
-});
-document.getElementById('modalOverlay').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('modalOverlay')) document.getElementById('modalOverlay').classList.remove('visible');
-});
-
-// ============================================
-// MESSAGE / ALERT
-// ============================================
-function showMsg(title, text, isError) {
-  document.getElementById('msgTitle').textContent = title;
-  document.getElementById('msgText').innerHTML = text;
-  const box = document.getElementById('msgBox');
-  if (isError) box.classList.add('error'); else box.classList.remove('error');
-  document.getElementById('msgOverlay').classList.add('visible');
-}
-
-document.getElementById('msgBtn').addEventListener('click', () => {
-  document.getElementById('msgOverlay').classList.remove('visible');
-});
-document.getElementById('msgOverlay').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('msgOverlay')) document.getElementById('msgOverlay').classList.remove('visible');
-});
-
-// ============================================
-// EXPORT HTML
-// ============================================
-document.getElementById('btnExport').addEventListener('click', () => {
-  if (tasks.length === 0) {
-    showMsg('Nada para exportar', 'Carregue um arquivo Excel primeiro.', true);
-    return;
-  }
-  // Serialize state into the HTML
-  const state = {
-    tasks: tasks.map(t => ({
-      id: t.id,
-      project: t.project,
-      name: t.name,
-      start: t.start.toISOString(),
-      end: t.end.toISOString(),
-      color: t.color,
-      extras: t.extras
-    })),
-    projects: projects,
-    zoom: zoom,
-    filterProject: filterProject,
-    searchQuery: searchQuery,
-    selectedTaskId: selectedTaskId
-  };
-
-  // Read current HTML source
-  let html = document.documentElement.outerHTML;
-
-  // Inject state before closing </script> of the inline script
-  // We find the last </script> and inject a data block before it
-  const stateScript = `
-  // === INJECTED EXPORT STATE ===
-  const EXPORT_STATE = ${JSON.stringify(state)};
-  window.EXPORT_STATE = EXPORT_STATE;
-`;
-
-  // Insert after the opening of the main script block or before </body>
-  // Simpler: append a script block right before </body>
-  html = html.replace('</body>', `<script>${stateScript}</script>
-</body>`);
-
-  // Also add a small loader that checks for EXPORT_STATE at startup
-  const loader = `
-  // === EXPORT LOADER ===
-  if (window.EXPORT_STATE) {
-    tasks = window.EXPORT_STATE.tasks.map(t => ({
-      ...t,
-      start: new Date(t.start),
-      end: new Date(t.end)
-    }));
-    projects = window.EXPORT_STATE.projects;
-    zoom = window.EXPORT_STATE.zoom;
-    filterProject = window.EXPORT_STATE.filterProject;
-    searchQuery = window.EXPORT_STATE.searchQuery;
-    selectedTaskId = window.EXPORT_STATE.selectedTaskId;
-    const sel = document.getElementById('filterProj');
-    sel.innerHTML = '<option value="__all__">Todos os projetos</option>';
-    projects.forEach(p => { const opt = document.createElement('option'); opt.value = p; opt.textContent = p; sel.appendChild(opt); });
-    sel.value = filterProject;
-    document.getElementById('searchEtapa').value = searchQuery;
-    document.querySelectorAll('.zoom-bar button').forEach(b => b.classList.toggle('active', b.dataset.zoom === zoom));
-    render();
-  }
-`;
-  // Insert loader at the very end of the existing script, before its </script>
-  html = html.replace('</script>
-</body>', loader + '</script>
-</body>');
-
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'Cronograma_Gantt.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  showMsg('Exportado!', 'Arquivo <strong>Cronograma_Gantt.html</strong> gerado com sucesso.
-Funciona offline e mantém todos os dados.', false);
-});
-
-// ============================================
-// ESCAPE HTML
-// ============================================
-function esc(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-// ============================================
-// KEYBOARD SHORTCUTS
-// ============================================
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    document.getElementById('modalOverlay').classList.remove('visible');
-    document.getElementById('msgOverlay').classList.remove('visible');
-  }
-});
-
-// ============================================
-// INITIAL STATE
-// ============================================
-// Check if loaded from exported file
-if (window.EXPORT_STATE) {
-  tasks = window.EXPORT_STATE.tasks.map(t => ({
-    ...t,
-    start: new Date(t.start),
-    end: new Date(t.end)
-  }));
-  projects = window.EXPORT_STATE.projects;
-  zoom = window.EXPORT_STATE.zoom;
-  filterProject = window.EXPORT_STATE.filterProject;
-  searchQuery = window.EXPORT_STATE.searchQuery;
-  selectedTaskId = window.EXPORT_STATE.selectedTaskId;
-  const sel = document.getElementById('filterProj');
-  sel.innerHTML = '<option value="__all__">Todos os projetos</option>';
-  projects.forEach(p => { const opt = document.createElement('option'); opt.value = p; opt.textContent = p; sel.appendChild(opt); });
-  sel.value = filterProject;
-  document.getElementById('searchEtapa').value = searchQuery;
-  document.querySelectorAll('.zoom-bar button').forEach(b => b.classList.toggle('active', b.dataset.zoom === zoom));
-  render();
-}
 </script>
+
 </body>
 </html>
